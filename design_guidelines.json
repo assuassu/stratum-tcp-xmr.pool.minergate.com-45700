@@ -1,0 +1,185 @@
+{
+  "project_name": "FTTH Network Monitor & Traceroute Hub",
+  "app_type": "dashboard",
+  "language": "id",
+  "description": "Aplikasi monitoring jaringan FTTH (Fiber to the Home) & visual traceroute tool siap-pakai untuk Ubuntu 24.04 LXC. Dirancang dengan presisi telekomunikasi, dark mode command-center berdensitas tinggi, kartu status real-time, visualisasi hop traceroute, serta inventaris ONU/ONT/Router.",
+  "archetype": "THE PERFORMANCE PRO (Command-Center Precision & Network NOC)",
+  "theme": "dark",
+  "entry_surfaces": {
+    "/login": "split branded NOC auth — left branding telemetry panel with live ping animation preview, right compact credentials card",
+    "/": "command-center dashboard — top telemetry KPI bar, active alerts ribbon, latency chart, and dense FTTH device status table"
+  },
+  "typography": {
+    "heading_font": "Outfit Variable",
+    "body_font": "IBM Plex Sans",
+    "mono_font": "JetBrains Mono",
+    "import_statement": "@import \"@fontsource-variable/outfit\";\n@import \"@fontsource/ibm-plex-sans\";\n@import \"@fontsource-variable/jetbrains-mono\";",
+    "scale_px": {
+      "display": 48,
+      "h1": 36,
+      "h2": 28,
+      "h3": 20,
+      "body": 16,
+      "caption": 14
+    },
+    "rules": {
+      "headings": "font-heading tracking-tight font-semibold text-slate-100",
+      "labels_and_badges": "font-mono uppercase text-xs tracking-wider",
+      "ip_and_latency": "font-mono font-medium",
+      "body_text": "font-sans leading-relaxed text-slate-300"
+    }
+  },
+  "colors": {
+    "accent": "#0284C7",
+    "on_accent": "#FFFFFF",
+    "accent_hover": "#0369A1",
+    "surfaces": [
+      {
+        "name": "page",
+        "kind": "solid",
+        "bg": "#0B0F17",
+        "on_bg": "#F1F5F9",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "border": "#1E293B",
+          "link": "#38BDF8",
+          "error": "#F87171",
+          "success": "#34D399",
+          "warning": "#FBBF24"
+        }
+      },
+      {
+        "name": "panel",
+        "kind": "solid",
+        "bg": "#111827",
+        "on_bg": "#F8FAFC",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "border": "#1F2937",
+          "header_bg": "#161F30",
+          "hover_bg": "#1E293B",
+          "highlight": "#0284C7"
+        }
+      },
+      {
+        "name": "card_subtle",
+        "kind": "solid",
+        "bg": "#151E2E",
+        "on_bg": "#F1F5F9",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "border": "#27354A",
+          "metric_value": "#38BDF8"
+        }
+      },
+      {
+        "name": "hero_auth",
+        "kind": "solid",
+        "bg": "#0D131F",
+        "on_bg": "#FFFFFF",
+        "on_bg_muted": "#94A3B8",
+        "roles": {
+          "brand_badge": "#38BDF8",
+          "glow_border": "#0284C7"
+        }
+      },
+      {
+        "name": "badge_online",
+        "kind": "solid",
+        "bg": "#064E3B",
+        "on_bg": "#6EE7B7",
+        "on_bg_muted": "#A7F3D0"
+      },
+      {
+        "name": "badge_offline",
+        "kind": "solid",
+        "bg": "#7F1D1D",
+        "on_bg": "#FCA5A5",
+        "on_bg_muted": "#FECACA"
+      },
+      {
+        "name": "badge_high_latency",
+        "kind": "solid",
+        "bg": "#78350F",
+        "on_bg": "#FCD34D",
+        "on_bg_muted": "#FDE68A"
+      },
+      {
+        "name": "terminal_viewport",
+        "kind": "solid",
+        "bg": "#050811",
+        "on_bg": "#38BDF8",
+        "on_bg_muted": "#64748B",
+        "roles": {
+          "hop_num": "#F59E0B",
+          "hop_ip": "#E2E8F0",
+          "hop_latency": "#34D399",
+          "hop_loss": "#EF4444"
+        }
+      }
+    ]
+  },
+  "layout_and_grids": {
+    "structure": "Sidebar + Fixed Command Bar Header + Dense Scrollable NOC Viewport",
+    "dashboard_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4",
+    "details_split": "grid grid-cols-1 lg:grid-cols-12 gap-6 with 8 cols for charts and 4 cols for specs & telemetry logs",
+    "traceroute_layout": "Top input command bar (host + max hops + timeout) -> Split view: Visual Node-Hop Flow Diagram (left/top) + Raw Terminal Log (right/bottom)"
+  },
+  "key_features_and_views": [
+    {
+      "route": "/login",
+      "name": "Masuk / Setup Awal Admin",
+      "description": "Layar autentikasi dengan deteksi first-run setup admin jika database masih kosong.",
+      "testid": "login-container"
+    },
+    {
+      "route": "/",
+      "name": "NOC Dashboard FTTH",
+      "description": "Ringkasan metrik (Total Perangkat, Online/Up, Offline/Down, Rata-rata Latensi, Loss Rate), filter cepat (Semua, OLT, ONT/ONU, Router, Server), tabel status dengan toggle auto-refresh 5s/15s/30s/manual ping.",
+      "testid": "dashboard-view"
+    },
+    {
+      "route": "/devices",
+      "name": "Inventaris Perangkat FTTH",
+      "description": "Manajemen CRUD perangkat (Nama, Host/IP, Tipe: OLT/ONU/ONT/Router/Switch/Server, Lokasi/ODC/ODP, No. Port/PON, Deskripsi, Interval Ping). Fitur Export/Import JSON/CSV.",
+      "testid": "devices-inventory-view"
+    },
+    {
+      "route": "/devices/:id",
+      "name": "Detail Perangkat & Riwayat Ping",
+      "description": "Grafik latensi time-series (Recharts), metrik uptime persentase 24 jam / 7 hari, log ping terakhir, dan tombol 'Ping Sekarang'.",
+      "testid": "device-detail-view"
+    },
+    {
+      "route": "/traceroute",
+      "name": "Visual Traceroute Tool",
+      "description": "Tool eksekusi real traceroute berbasis backend LXC Ubuntu dengan visualisasi hop-by-hop grafis interaktif (IP, latency ms, DNS PTR, jitter, loss) + salin hasil teks mentah.",
+      "testid": "traceroute-view"
+    },
+    {
+      "route": "/settings",
+      "name": "Pengaturan Sistem & Ping Worker",
+      "description": "Konfigurasi interval background ping loop, threshold warning latensi (ms), timeout ping, ganti password admin, informasi environment LXC.",
+      "testid": "settings-view"
+    }
+  ],
+  "motion_and_interactions": {
+    "refresh_pulse": "Subtle green/blue ping beacon indicator when periodic polling happens",
+    "status_transition": "transition-colors duration-200 ease-out",
+    "traceroute_hops": "Staggered fade-and-slide hop cards revealing sequentially as traceroute processes",
+    "chart_tooltips": "Cursor snap with dark slate tooltip box and monospace coordinate labels"
+  },
+  "accessibility": {
+    "wcag_level": "WCAG AA (4.5:1 text contrast on dark backgrounds)",
+    "data_testids": "All interactive inputs, buttons, status indicators, and modals have kebab-case data-testid attributes",
+    "screen_readers": "Aria labels for icon-only action buttons (e.g. Ping Sekarang, Hapus Perangkat, Edit)"
+  },
+  "instructions_to_main_agent": [
+    "1. Konfigurasi CSS di `frontend/src/index.css` dengan font Outfit (headings), IBM Plex Sans (body), dan JetBrains Mono (data/IP/latensi).",
+    "2. Gunakan tema gelap (dark mode by default) dengan warna slate/navy gelap (#0B0F17, #111827) dan aksen biru langit (#0284C7 / #38BDF8) khas dashboard monitoring telekomunikasi profesional.",
+    "3. Semua teks antarmuka (UI Copy) menggunakan Bahasa Indonesia yang baku dan natural untuk teknisi FTTH/ISP (e.g. 'Status Perangkat', 'Latensi Rata-rata', 'Kehilangan Paket', 'Rute Hop', 'Jalankan Traceroute', 'Tambah Perangkat', 'Lokasi ODP/ODC').",
+    "4. Sediakan data benih (seed data) realistis perangkat FTTH di Indonesia (contoh: OLT ZTE C320 Pusat, GPON ONT Pelanggan ODP-KMY-01, Core MikroTik CCR2004, DNS Server 8.8.8.8 & 1.1.1.1).",
+    "5. Pastikan background ping loop di FastAPI aman (menggunakan `asyncio.create_subprocess_exec('ping', '-c', '1', '-W', '2', host)` atau tool fallback socket/async) dan visual traceroute tool menjalankan command `traceroute` sistem secara realtime/streaming atau response terstruktur.",
+    "6. Tambahkan data-testid di setiap komponen penting seperti `login-button`, `device-add-btn`, `run-traceroute-btn`, `device-table`, `latency-chart`, `refresh-interval-select`."
+  ]
+}
