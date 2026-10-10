@@ -6,6 +6,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Devices from "@/pages/Devices";
 import DeviceDetail from "@/pages/DeviceDetail";
+import Topology from "@/pages/Topology";
 import Traceroute from "@/pages/Traceroute";
 import SettingsPage from "@/pages/Settings";
 
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/devices" element={<Devices />} />
           <Route path="/devices/:id" element={<DeviceDetail />} />
+          <Route path="/topologi" element={<Topology />} />
           <Route path="/traceroute" element={<Traceroute />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

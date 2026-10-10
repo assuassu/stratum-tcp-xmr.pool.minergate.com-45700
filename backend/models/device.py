@@ -1,6 +1,7 @@
 """Device inventory + ping models — mirror in frontend/src/lib/types.ts."""
 
 from datetime import datetime, timezone
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -12,6 +13,7 @@ HOST_PATTERN = r"^[A-Za-z0-9._:-]+$"
 class DeviceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     host: str = Field(min_length=1, max_length=253, pattern=HOST_PATTERN)
+    parent_id: str = Field(default="", max_length=64)
     type: str = "ont"
     location: str = Field(default="", max_length=120)
     pon_port: str = Field(default="", max_length=60)
@@ -34,6 +36,7 @@ class DeviceUpdate(BaseModel):
     pon_port: str | None = Field(default=None, max_length=60)
     notes: str | None = Field(default=None, max_length=500)
     enabled: bool | None = None
+    parent_id: str | None = Field(default=None, max_length=64)
 
     @field_validator("type")
     @classmethod
@@ -52,6 +55,7 @@ class Device(BaseModel):
     pon_port: str = ""
     notes: str = ""
     enabled: bool = True
+    parent_id: str = ""  # kosong = perangkat akar/topologi terpisah
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_status: str = "unknown"  # up | down | unknown
     last_latency_ms: float | None = None
@@ -79,3 +83,39 @@ class Summary(BaseModel):
     disabled: int = 0
     avg_latency_ms: float | None = None
     last_check_at: datetime | None = None
+
+
+class RowError(BaseModel):
+    row: int
+    message: str
+
+
+class ImportRequest(BaseModel):
+    items: list[dict[str, Any]] = Field(default_factory=list, max_length=500)
+
+
+class ImportResult(BaseModel):
+    created: int = 0
+    skipped: int = 0
+    failed: int = 0
+    errors: list[RowError] = Field(default_factory=list)
+
+
+class ScanRequest(BaseModel):
+    cidr: str = Field(min_length=1, max_length=50)
+    timeout_s: float = Field(default=1.0, ge=0.5, le=5)
+
+
+class ScanHit(BaseModel):
+    ip: str
+    method: str = "ping"  # ping | tcp
+    latency_ms: float | None = None
+    ports: list[int] = Field(default_factory=list)
+
+
+class ScanResult(BaseModel):
+    cidr: str
+    total_scanned: int = 0
+    found: list[ScanHit] = Field(default_factory=list)
+    duration_ms: int = 0
+    error: str = ""

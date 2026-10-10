@@ -22,6 +22,7 @@ export interface Device {
   pon_port: string;
   notes: string;
   enabled: boolean;
+  parent_id: string;
   created_at: string;
   last_status: DeviceStatus;
   last_latency_ms: number | null;
@@ -39,9 +40,37 @@ export interface DeviceCreate {
   pon_port: string;
   notes: string;
   enabled: boolean;
+  parent_id: string;
 }
 
 export type DeviceUpdate = Partial<DeviceCreate>;
+
+export interface RowError {
+  row: number;
+  message: string;
+}
+
+export interface ImportResult {
+  created: number;
+  skipped: number;
+  failed: number;
+  errors: RowError[];
+}
+
+export interface ScanHit {
+  ip: string;
+  method: string;
+  latency_ms: number | null;
+  ports: number[];
+}
+
+export interface ScanResult {
+  cidr: string;
+  total_scanned: number;
+  found: ScanHit[];
+  duration_ms: number;
+  error: string;
+}
 
 export interface PingSample {
   id: string;

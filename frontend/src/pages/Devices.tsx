@@ -1,13 +1,24 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Download, Pencil, Plus, Router as RouterIcon, Trash2 } from "lucide-react";
+import {
+  ArrowRight,
+  Download,
+  FileUp,
+  Pencil,
+  Plus,
+  Radar,
+  Router as RouterIcon,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/api";
 import { apiErrorText } from "@/lib/errors";
 import { DEVICE_TYPE_LABELS, type Device, type DeviceCreate } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
 import DeviceFormDialog from "@/components/DeviceFormDialog";
+import ImportCsvDialog from "@/components/ImportCsvDialog";
+import ScanSubnetDialog from "@/components/ScanSubnetDialog";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +42,8 @@ import {
 export default function Devices() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
   const [deleting, setDeleting] = useState<Device | null>(null);
 
@@ -80,13 +93,14 @@ export default function Devices() {
   const devices = qDevices.data ?? [];
 
   const exportCsv = () => {
-    const header = ["nama", "host", "tipe", "lokasi", "port_pon", "status", "latensi_ms", "uptime_24h", "aktif"];
+    const header = ["nama", "host", "tipe", "lokasi", "port_pon", "catatan", "status", "latensi_ms", "uptime_24h", "aktif"];
     const rows = devices.map((d) => [
       d.name,
       d.host,
       d.type,
       d.location,
       d.pon_port,
+      d.notes,
       d.last_status,
       d.last_latency_ms ?? "",
       d.uptime_24h ?? "",
@@ -112,7 +126,13 @@ export default function Devices() {
             Kelola daftar OLT, ONT/ONU, router, dan server yang dipantau.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setScanOpen(true)} data-testid="scan-subnet-btn">
+            <Radar className="h-4 w-4" /> Pindai Subnet
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} data-testid="import-csv-btn">
+            <FileUp className="h-4 w-4" /> Impor CSV
+          </Button>
           <Button variant="outline" size="sm" onClick={exportCsv} data-testid="devices-export-csv-btn">
             <Download className="h-4 w-4" /> Ekspor CSV
           </Button>
@@ -241,11 +261,21 @@ export default function Devices() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         initial={editing}
+        parentOptions={devices}
         pending={createMut.isPending || updateMut.isPending}
         onSubmit={(values) => {
           if (editing) updateMut.mutate({ id: editing.id, values });
           else createMut.mutate(values);
         }}
+      />
+
+      <ImportCsvDialog open={importOpen} onOpenChange={setImportOpen} onImported={invalidate} />
+
+      <ScanSubnetDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        knownHosts={devices.map((d) => d.host)}
+        onImported={invalidate}
       />
 
       <Dialog open={deleting !== null} onOpenChange={(o) => !o && setDeleting(null)}>

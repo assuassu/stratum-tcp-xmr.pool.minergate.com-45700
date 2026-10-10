@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, LogOut, RadioTower, Route, Router, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, Network, RadioTower, Route, Router, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { endSession } from "@/lib/session";
 import { useMe } from "@/lib/useMe";
@@ -7,6 +7,7 @@ import { useMe } from "@/lib/useMe";
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/devices", label: "Perangkat", icon: Router },
+  { to: "/topologi", label: "Topologi", icon: Network },
   { to: "/traceroute", label: "Traceroute", icon: Route },
   { to: "/settings", label: "Pengaturan", icon: Settings },
 ];
@@ -14,6 +15,7 @@ const NAV = [
 const TITLES: Record<string, string> = {
   "/": "Dashboard NOC FTTH",
   "/devices": "Inventaris Perangkat",
+  "/topologi": "Peta Topologi FTTH",
   "/traceroute": "Traceroute",
   "/settings": "Pengaturan",
 };

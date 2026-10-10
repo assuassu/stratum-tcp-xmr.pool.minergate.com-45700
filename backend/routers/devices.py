@@ -1,14 +1,29 @@
-"""Inventaris perangkat FTTH: CRUD + ringkasan + riwayat ping + ping sekarang."""
+"""Inventaris perangkat FTTH: CRUD + ringkasan + riwayat ping + ping sekarang + impor + scan."""
 
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import ValidationError
 from pymongo import ASCENDING
 
 from lib.auth import get_current_user, normalize_dt
 from lib.db import db
 from lib.monitor import ping_and_record
-from models.device import Device, DeviceCreate, DeviceUpdate, PingSample, Summary
+from lib.scan import sweep_subnet
+from models.device import (
+    Device,
+    DeviceCreate,
+    DeviceUpdate,
+    ImportRequest,
+    ImportResult,
+    PingSample,
+    RowError,
+    ScanHit,
+    ScanRequest,
+    ScanResult,
+    Summary,
+)
 
 router = APIRouter(prefix="/devices", tags=["devices"], dependencies=[Depends(get_current_user)])
 
@@ -28,6 +43,23 @@ async def _get_device_or_404(device_id: str) -> dict:
     if not device:
         raise HTTPException(status_code=404, detail="Perangkat tidak ditemukan")
     return device
+
+
+async def _parent_valid(device_id: str, parent_id: str) -> bool:
+    """Induk harus ada dan rantai induk tidak boleh membentuk siklus."""
+    seen = {device_id}
+    current = parent_id
+    for _ in range(20):
+        if not current:
+            return True
+        if current in seen:
+            return False
+        seen.add(current)
+        doc = await db.devices.find_one({"id": current}, {"parent_id": 1})
+        if not doc:
+            return False
+        current = doc.get("parent_id", "")
+    return False
 
 
 async def _uptime_stats() -> dict[str, dict]:
@@ -84,10 +116,59 @@ async def list_devices() -> list[Device]:
 @router.post("", response_model=Device, status_code=201)
 async def create_device(input: DeviceCreate) -> Device:
     device = Device(**input.model_dump())
+    if device.parent_id and not await _parent_valid("", device.parent_id):
+        raise HTTPException(status_code=400, detail="Perangkat induk tidak valid (tidak ditemukan)")
     await db.devices.insert_one(
         device.model_dump(exclude={"uptime_24h", "avg_latency_24h"})
     )
     return device
+
+
+@router.post("/import", response_model=ImportResult)
+async def import_devices(input: ImportRequest) -> ImportResult:
+    """Impor massal (hasil parse CSV di frontend): baris valid dibuat, sisanya dilaporkan."""
+    existing = {
+        f"{d['name']}|{d['host']}"
+        for d in await db.devices.find({}, {"name": 1, "host": 1, "_id": 0}).to_list(5000)
+    }
+    result = ImportResult()
+    for row_num, item in enumerate(input.items, start=1):
+        try:
+            candidate = DeviceCreate(**item)
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            loc = ".".join(str(p) for p in first.get("loc", []))
+            message = f"{loc}: {first.get('msg', 'tidak valid')}" if loc else str(first.get("msg", "tidak valid"))
+            result.failed += 1
+            result.errors.append(RowError(row=row_num, message=message))
+            continue
+        if candidate.parent_id and not await _parent_valid("", candidate.parent_id):
+            result.failed += 1
+            result.errors.append(RowError(row=row_num, message="Perangkat induk tidak valid"))
+            continue
+        key = f"{candidate.name}|{candidate.host}"
+        if key in existing:
+            result.skipped += 1
+            continue
+        obj = Device(**candidate.model_dump())
+        await db.devices.insert_one(obj.model_dump(exclude={"uptime_24h", "avg_latency_24h"}))
+        existing.add(key)
+        result.created += 1
+    return result
+
+
+@router.post("/scan", response_model=ScanResult)
+async def scan(input: ScanRequest) -> ScanResult:
+    """Ping sweep + probe TCP sebuah subnet (maks /24)."""
+    started = time.monotonic()
+    hits, total, error = await sweep_subnet(input.cidr, input.timeout_s)
+    return ScanResult(
+        cidr=input.cidr,
+        total_scanned=total,
+        found=[ScanHit(**h) for h in hits],
+        duration_ms=int((time.monotonic() - started) * 1000),
+        error=error,
+    )
 
 
 @router.get("/{device_id}", response_model=Device)
@@ -103,6 +184,10 @@ async def update_device(device_id: str, input: DeviceUpdate) -> Device:
     changes = input.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail="Tidak ada perubahan")
+    if changes.get("parent_id") and not await _parent_valid(device_id, changes["parent_id"]):
+        raise HTTPException(
+            status_code=400, detail="Perangkat induk tidak valid (tidak ditemukan / siklus terdeteksi)"
+        )
     if "host" in changes:  # status lama tidak lagi relevan untuk host baru
         changes.update({"last_status": "unknown", "last_latency_ms": None, "last_check_at": None})
     await db.devices.update_one({"id": device_id}, {"$set": changes})
@@ -116,6 +201,8 @@ async def delete_device(device_id: str) -> None:
     await _get_device_or_404(device_id)
     await db.devices.delete_one({"id": device_id})
     await db.ping_results.delete_many({"device_id": device_id})
+    # anak-anak menjadi perangkat akar agar topologi tidak menggantung
+    await db.devices.update_many({"parent_id": device_id}, {"$set": {"parent_id": ""}})
 
 
 @router.get("/{device_id}/history", response_model=list[PingSample])

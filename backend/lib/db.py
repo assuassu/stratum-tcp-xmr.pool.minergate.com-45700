@@ -24,7 +24,10 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("token", ASCENDING)], name="token", unique=True),
         IndexModel([("expires_at", ASCENDING)], name="expires_at_ttl", expireAfterSeconds=0),
     ],
-    "devices": [IndexModel([("id", ASCENDING)], name="id", unique=True)],
+    "devices": [
+        IndexModel([("id", ASCENDING)], name="id", unique=True),
+        IndexModel([("parent_id", ASCENDING)], name="parent_id"),
+    ],
     "ping_results": [
         IndexModel([("device_id", ASCENDING), ("timestamp", DESCENDING)], name="device_time"),
         IndexModel([("timestamp", ASCENDING)], name="timestamp_ttl", expireAfterSeconds=7 * 86400),

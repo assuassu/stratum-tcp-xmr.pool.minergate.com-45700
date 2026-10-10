@@ -25,6 +25,14 @@ DEVICES = [
     ("ONT Pelanggan - ODP PLT-07", "10.20.40.51", "ont", "ODP PLT-07 Port 1", "PON 1/4", "Contoh pelanggan offline", 6.0, 2.5, False),
 ]
 
+# nama anak -> nama induk; membentuk hierarki Router Core → OLT → ONT untuk Peta Topologi
+PARENTS = {
+    "OLT ZTE ZXA10 C320 - Pusat": "Router Core MikroTik CCR2004",
+    "ONT ZTE F660 - ODP KMY-01": "OLT ZTE ZXA10 C320 - Pusat",
+    "ONT Huawei HG8245H - ODP SDM-03": "OLT ZTE ZXA10 C320 - Pusat",
+    "ONT Pelanggan - ODP PLT-07": "OLT ZTE ZXA10 C320 - Pusat",
+}
+
 HOURS_BACK = 6
 STEP_SECONDS = 120
 
@@ -54,6 +62,7 @@ async def seed() -> None:
                 "pon_port": pon_port,
                 "notes": notes,
                 "enabled": True,
+                "parent_id": "",
                 "created_at": now - timedelta(days=30),
                 "last_status": "up" if up else "down",
                 "last_latency_ms": round(max(0.2, random.gauss(base, jitter)), 2) if up else None,
@@ -86,6 +95,24 @@ async def seed() -> None:
         print(f"{len(DEVICES)} perangkat contoh + riwayat ping {HOURS_BACK} jam dibuat")
     else:
         print("Data perangkat sudah ada — seed dilewati")
+
+    await link_topology()
+
+
+async def link_topology() -> None:
+    """Tetapkan parent_id sesuai PARENTS untuk perangkat yang belum punya induk (idempoten)."""
+    linked = 0
+    for child_name, parent_name in PARENTS.items():
+        parent = await db.devices.find_one({"name": parent_name}, {"id": 1})
+        if not parent:
+            continue
+        result = await db.devices.update_one(
+            {"name": child_name, "$or": [{"parent_id": ""}, {"parent_id": {"$exists": False}}]},
+            {"$set": {"parent_id": parent["id"]}},
+        )
+        linked += result.modified_count
+    if linked:
+        print(f"{linked} relasi topologi (induk) ditetapkan")
 
 
 if __name__ == "__main__":

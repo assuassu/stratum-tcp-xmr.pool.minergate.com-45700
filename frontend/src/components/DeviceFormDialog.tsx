@@ -22,16 +22,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { DEVICE_TYPE_LABELS, type Device, type DeviceCreate, type DeviceType } from "@/lib/types";
 
 const TYPES = Object.keys(DEVICE_TYPE_LABELS) as DeviceType[];
+const NO_PARENT = "__none__";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial: Device | null;
   pending: boolean;
+  parentOptions: Device[];
   onSubmit: (values: DeviceCreate) => void;
 }
 
-export default function DeviceFormDialog({ open, onOpenChange, initial, pending, onSubmit }: Props) {
+export default function DeviceFormDialog({
+  open,
+  onOpenChange,
+  initial,
+  pending,
+  parentOptions,
+  onSubmit,
+}: Props) {
   const [name, setName] = useState("");
   const [host, setHost] = useState("");
   const [type, setType] = useState<DeviceType>("ont");
@@ -39,6 +48,7 @@ export default function DeviceFormDialog({ open, onOpenChange, initial, pending,
   const [ponPort, setPonPort] = useState("");
   const [notes, setNotes] = useState("");
   const [enabled, setEnabled] = useState(true);
+  const [parentId, setParentId] = useState(NO_PARENT);
 
   useEffect(() => {
     if (open) {
@@ -49,12 +59,29 @@ export default function DeviceFormDialog({ open, onOpenChange, initial, pending,
       setPonPort(initial?.pon_port ?? "");
       setNotes(initial?.notes ?? "");
       setEnabled(initial?.enabled ?? true);
+      setParentId(initial?.parent_id ? initial.parent_id : NO_PARENT);
     }
   }, [open, initial]);
 
+  // A device can never be its own parent.
+  const parents = parentOptions.filter((p) => p.id !== initial?.id);
+  const parentLabel = (value: string) =>
+    value === NO_PARENT
+      ? "Tidak ada (perangkat akar)"
+      : (parents.find((p) => p.id === value)?.name ?? "Tidak ada (perangkat akar)");
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    onSubmit({ name, host, type, location, pon_port: ponPort, notes, enabled });
+    onSubmit({
+      name,
+      host,
+      type,
+      location,
+      pon_port: ponPort,
+      notes,
+      enabled,
+      parent_id: parentId === NO_PARENT ? "" : parentId,
+    });
   };
 
   return (
@@ -119,6 +146,26 @@ export default function DeviceFormDialog({ open, onOpenChange, initial, pending,
                 data-testid="device-pon-port-input"
               />
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="device-parent">Perangkat Induk (topologi)</Label>
+            <Select value={parentId} onValueChange={(v: string) => setParentId(v)}>
+              <SelectTrigger id="device-parent" data-testid="device-parent-select">
+                <SelectValue>{(v: string) => parentLabel(v as string)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_PARENT}>Tidak ada (perangkat akar)</SelectItem>
+                {parents.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Menentukan posisi perangkat pada Peta Topologi (mis. ONT berinduk ke OLT).
+            </p>
           </div>
 
           <div className="grid gap-2">
